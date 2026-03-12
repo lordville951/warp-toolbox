@@ -1,0 +1,9 @@
+config/azure/*
+config/kube/*
+data/*
+work/*
+
+!config/azure/.gitkeep
+!config/kube/.gitkeep
+!data/.gitkeep
+!work/.gitkeep

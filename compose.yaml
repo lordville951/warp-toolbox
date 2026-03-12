@@ -1,0 +1,45 @@
+services:
+  warp:
+    image: caomingjun/warp:latest
+    container_name: warp
+    restart: unless-stopped
+
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "0"
+      net.ipv4.conf.all.src_valid_mark: "1"
+
+    volumes:
+      - ./data:/var/lib/cloudflare-warp
+
+  toolbox:
+    build:
+      context: ./toolbox
+      args:
+        HOST_USER: ${HOST_USER}
+        HOST_UID: ${HOST_UID}
+        HOST_GID: ${HOST_GID}
+        HOST_HOME: ${HOST_HOME}
+
+    container_name: warp-toolbox
+    depends_on:
+      - warp
+
+    network_mode: "service:warp"
+
+    environment:
+      HOME: ${HOST_HOME}
+      KUBECONFIG: ${HOST_HOME}/.kube/config
+      AZURE_CONFIG_DIR: ${HOST_HOME}/.azure
+
+    volumes:
+      - ${HOST_HOME}:${HOST_HOME}
+
+    working_dir: ${HOST_HOME}
+
+    entrypoint: ["/usr/local/bin/entrypoint.sh"]
+    command: ["sleep", "infinity"]

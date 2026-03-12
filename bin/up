@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+PROJECT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")/.." && pwd)"
+cd "${PROJECT_DIR}"
+
+HOST_USER="${HOST_USER:-$(id -un)}"
+HOST_UID="${HOST_UID:-$(id -u)}"
+HOST_GID="${HOST_GID:-$(id -g)}"
+HOST_HOME="${HOST_HOME:-$HOME}"
+
+mkdir -p data
+
+export HOST_USER HOST_UID HOST_GID HOST_HOME
+
+echo "Starting warp-toolbox with:"
+echo "  HOST_USER=${HOST_USER}"
+echo "  HOST_UID=${HOST_UID}"
+echo "  HOST_GID=${HOST_GID}"
+echo "  HOST_HOME=${HOST_HOME}"
+
+exec docker compose -f compose.yaml up -d --build

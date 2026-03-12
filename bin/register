@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CONTAINER_NAME="${CONTAINER_NAME:-warp}"
+
+print_line() {
+  echo "--------------------------------------------------"
+}
+
+info() {
+  print_line
+  echo "$1"
+  print_line
+}
+
+run_in_container() {
+  docker exec -it "$CONTAINER_NAME" "$@"
+}
+
+check_container() {
+  if ! docker ps --format '{{.Names}}' | grep -qx "$CONTAINER_NAME"; then
+    echo "Error: container '$CONTAINER_NAME' is not running."
+    exit 1
+  fi
+}
+
+read_org() {
+  read -r -p "Enter organisation ID (example: nordicfuzzcon): " ORG_ID
+  if [[ -z "${ORG_ID// }" ]]; then
+    echo "Error: organisation ID cannot be empty."
+    exit 1
+  fi
+}
+
+delete_registration() {
+  info "Removing existing WARP registration"
+  run_in_container warp-cli registration delete || true
+}
+
+start_registration() {
+  info "Starting new WARP registration"
+  run_in_container warp-cli --accept-tos registration new "$ORG_ID"
+}
+
+show_browser_link() {
+  WARP_BROWSER_URL="https://${ORG_ID}.cloudflareaccess.com/warp"
+
+  info "Open this URL in your browser"
+  echo "$WARP_BROWSER_URL"
+  echo
+  echo "After login, DO NOT click 'Open Cloudflare WARP'."
+  echo "Instead:"
+  echo "  1. Right-click the button"
+  echo "  2. Click Inspect"
+  echo "  3. Copy the full href URL"
+  echo "  4. It should look like:"
+  echo "     com.cloudflare.warp://${ORG_ID}.cloudflareaccess.com/auth?token=..."
+  echo
+}
+
+read_token_url() {
+  echo "Paste the full com.cloudflare.warp:// URL below."
+  read -r -p "WARP URL: " WARP_URL
+
+  if [[ -z "${WARP_URL// }" ]]; then
+    echo "Error: WARP URL cannot be empty."
+    exit 1
+  fi
+
+  if [[ ! "$WARP_URL" =~ ^com\.cloudflare\.warp:// ]]; then
+    echo "Error: pasted value does not look like a Cloudflare WARP URL."
+    exit 1
+  fi
+}
+
+submit_token() {
+  info "Submitting WARP token"
+  run_in_container warp-cli registration token "$WARP_URL"
+}
+
+connect_warp() {
+  info "Connecting WARP"
+  run_in_container warp-cli connect
+}
+
+check_status() {
+  info "Checking WARP status"
+  run_in_container warp-cli status
+}
+
+main() {
+  check_container
+  read_org
+  delete_registration
+  start_registration
+  show_browser_link
+  read_token_url
+  submit_token
+  connect_warp
+  check_status
+
+  info "Done"
+  echo "The container should now be registered with Cloudflare WARP."
+}
+
+main "$@"
